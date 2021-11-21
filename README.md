@@ -1,1 +1,1 @@
-# DSE-Decentralised-Stock-Exchange
+# DSE-Decentralised Stock Exchange
