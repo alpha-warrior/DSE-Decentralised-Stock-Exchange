@@ -11,6 +11,7 @@ contract Nifty {
     }
 
     uint number_of_orders; 
+    uint marketprice;
     // number of orders placed 
 
     string private Symbol; 
@@ -37,8 +38,8 @@ contract Nifty {
     constructor(string memory symbol_sent, uint quantity_sent,uint price_sent) public
     {
         Symbol = symbol_sent;
-        OwnedStocks[msg.sender] = quantity_sent;
-        Sell_orders.push(NewOrder(number_of_orders,1,msg.sender,price_sent,quantity_sent));
+        OwnedStocks[address(this)] = quantity_sent;
+        Sell_orders.push(NewOrder(number_of_orders,1,address(this),price_sent,quantity_sent));
         number_of_orders++;
     }
 
@@ -145,6 +146,7 @@ contract Nifty {
             {
                 if(Sell_orders[i].qty_left <= sent_qty)
                 {
+                    marketprice = sent_price;
                     uint temp_qty = Sell_orders[i].qty_left;
                     OwnedStocks[address(this)] -= temp_qty;
                     OwnedStocks[msg.sender] += temp_qty;
@@ -158,6 +160,7 @@ contract Nifty {
                 }
                 else
                 {
+                    marketprice = sent_price;
                     uint temp_qty = sent_qty;
                     OwnedStocks[address(this)] -= temp_qty;
                     OwnedStocks[msg.sender] += temp_qty;
@@ -196,6 +199,7 @@ contract Nifty {
             {
                 if(Buy_orders[i].qty_left <= sell_qty)
                 {
+                    marketprice = Buy_orders[i].Price;
                     uint temp_qty = Buy_orders[i].qty_left;
                     OwnedStocks[Buy_orders[i].ExecutorAddress] += temp_qty;
                     OwnedStocks[msg.sender] -= temp_qty;
@@ -209,6 +213,7 @@ contract Nifty {
                 }
                 else
                 {
+                    marketprice = Buy_orders[i].Price;
                     uint temp_qty = sell_qty;
                     OwnedStocks[Buy_orders[i].ExecutorAddress] += temp_qty;
                     OwnedStocks[msg.sender] -= temp_qty;
@@ -289,8 +294,7 @@ contract Nifty {
     function getMarketPrice() public view returns(string memory)
     {
         string memory ret = "";
-        uint value = Buy_orders[0].Price;
-        ret = string(abi.encodePacked(ret,"\n*****************","\n","Market Price (Highest Buy Order): ",uint2str(value),"\n"));
+        ret = string(abi.encodePacked(ret,"\n*****************","\n","Market Price: ",uint2str(marketprice),"\n"));
     }
 
     function getMarketDepth() public view returns(string memory)
