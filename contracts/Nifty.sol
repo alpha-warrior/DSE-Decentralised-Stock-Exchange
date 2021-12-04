@@ -7,7 +7,7 @@ contract Nifty {
         uint State; //represents id order is open for execution 1, cancelled 0 or completed 2
         address payable ExecutorAddress;//represents the address of the individual who posted the order
         uint Price; //price individual is willing to give or take for the order
-        uint quantity_left; //quantity of stocks left to be sold or bought
+        uint qty_left; //quantity of stocks left to be sold or bought
     }
 
     uint number_of_orders; 
@@ -127,12 +127,14 @@ contract Nifty {
             Sell_orders.push(temp_orders[i]);
         }
         temp_orders.length = 0;
-    }    
+    }   
+
+
     // A function to post a buy order for underlying security, function will take all the 
     // necesarry inputs to post a buy order as parameter and will return the status of order.
     function buy(uint sent_price, uint sent_qty) payable public
     {
-        require(msg.value == snet_price*sent_qty,"WRONG, amount of money paid"); // check if the value of money sent matches with quantity*price
+        require(msg.value == sent_price*sent_qty,"WRONG, amount of money paid"); // check if the value of money sent matches with quantity*price
         for(uint i=0;i<Sell_orders.length;i++)
         {
             if(Sell_orders[i].Price > sent_price)
@@ -141,10 +143,10 @@ contract Nifty {
             }
             else
             {
-                if(Sell_orders.qty_left <= sent_qty)
+                if(Sell_orders[i].qty_left <= sent_qty)
                 {
-                    uint temp_qty = Sell_orders.qty_left;
-                    OwnedStocks[address(this)] -= temp_qty;
+                    uint temp_qty = Sell_orders[i].qty_left;
+                    OwnedStocks[Sell_orders[i].ExecutorAddress] -= temp_qty;
                     OwnedStocks[msg.sender] += temp_qty;
                     Sell_orders[i].ExecutorAddress.transfer(sent_price*temp_qty);
                     Sell_orders[i].qty_left -= temp_qty;
@@ -157,7 +159,7 @@ contract Nifty {
                 else
                 {
                     uint temp_qty = sent_qty;
-                    OwnedStocks[address(this)] -= temp_qty;
+                    OwnedStocks[Sell_orders[i].ExecutorAddress] -= temp_qty;
                     OwnedStocks[msg.sender] += temp_qty;
                     Sell_orders[i].ExecutorAddress.transfer(sent_price*temp_qty);
                     Sell_orders[i].qty_left -= temp_qty;
@@ -178,6 +180,171 @@ contract Nifty {
         sort_Buy_orders();
         sort_Sell_orders();
     }
+
+
+    function sell(uint sell_price, uint sell_qty) payable public
+    {
+        require(OwnedStocks[msg.sender] >= sell_qty, "You do not have enough shares to sell");
+        
+        for(uint i=0;i<Buy_orders.length;i++)
+        {
+            if(Buy_orders[i].Price < sell_price)
+            {
+                break;
+            }
+            else
+            {
+                if(Buy_orders[i].qty_left <= sell_qty)
+                {
+                    uint temp_qty = Buy_orders[i].qty_left;
+                    OwnedStocks[Buy_orders[i].ExecutorAddress] += temp_qty;
+                    OwnedStocks[msg.sender] -= temp_qty;
+                    msg.sender.transfer(Buy_orders[i].Price*temp_qty);
+                    Buy_orders[i].qty_left -= temp_qty;
+                    if(Buy_orders[i].qty_left == 0)
+                    {
+                        Buy_orders[i].State = 2;
+                    }
+                    sell_qty -= temp_qty;
+                }
+                else
+                {
+                    uint temp_qty = sell_qty;
+                    OwnedStocks[Buy_orders[i].ExecutorAddress] += temp_qty;
+                    OwnedStocks[msg.sender] -= temp_qty;
+                    msg.sender.transfer(Buy_orders[i].Price*temp_qty);
+                    Buy_orders[i].qty_left -= temp_qty;
+                    if(Buy_orders[i].qty_left == 0)
+                    {
+                        Buy_orders[i].State = 2;
+                    }
+                    sell_qty -= temp_qty;
+                }
+            }
+        }
+
+        if(sell_qty !=0)
+        {
+            Sell_orders.push(NewOrder(number_of_orders,1,msg.sender,sell_price,sell_qty));
+            number_of_orders++;
+        }
+        sort_Buy_orders();
+        sort_Sell_orders();
+    }
+
+    function getDetails(uint orderid) public view returns(string memory)
+    {
+
+        string memory ret = "";
+
+        uint found = 0;
+
+        for(uint i=0;i<Buy_orders.length;i++)
+        {
+            if(found == 0)
+            {
+            if(Buy_orders[i].order_id == orderid)
+            {
+                require(Buy_orders[i].ExecutorAddress == msg.sender, "You are not the owner of this Buy order");
+                ret = string(abi.encodePacked(ret,"\n*****************","\n","Order ID: ",uint2str(Buy_orders[i].order_id),"\n",
+                "Price: ",uint2str(Buy_orders[i].Price),"\n",
+                "Quantity left: ", uint2str(Buy_orders[i].qty_left),"\n",
+                "State: ",uint2str(Buy_orders[i].State),"\n"));
+                
+                found = 1;
+                break;
+            }
+            }
+        }
+
+        for(uint i=0;i<Sell_orders.length;i++)
+        {
+            if(found == 0)
+            {
+            if(Sell_orders[i].order_id == orderid)
+            {
+                require(Sell_orders[i].ExecutorAddress == msg.sender, "You are not the owner of this Sell order");
+                
+                ret = string(abi.encodePacked(ret,"\n*****************","\n","Order ID: ",uint2str(Sell_orders[i].order_id),"\n",
+                "Price: ",uint2str(Sell_orders[i].Price),"\n",
+                "Quantity left: ", uint2str(Sell_orders[i].qty_left),"\n",
+                "State: ",uint2str(Sell_orders[i].State),"\n"));
+                
+                found = 1;
+                break;
+
+            }
+            }
+        }
+
+        if(found == 0)
+        {
+            ret = string("This Order ID you have provided does not exist, please recheck");
+        }
+
+    }
+
+    function getMarketPrice() public view returns(string memory)
+    {
+        string memory ret = "";
+        uint value = Buy_orders[0].Price;
+        ret = string(abi.encodePacked(ret,"\n*****************","\n","Market Price (Highest Buy Order): ",uint2str(value),"\n"));
+    }
+
+    function getMarketDepth() public view returns(string memory)
+    {
+        string memory ret = "";
+        uint depth = 0;
+        for(uint i=0;i<Sell_orders.length;i++)
+        {
+            if(Sell_orders[i].State == 1)
+            {
+                depth += Sell_orders[i].qty_left;
+            }
+        }
+        ret = string(abi.encodePacked(ret,"\n*****************","\n","Market Depth (Available shares in Sell Orders): ",uint2str(depth),"\n"));
+    }
+
+    function cancel_buyorder(uint orderid) public payable
+    {
+        uint found = 0;
+        for(uint i=0;i<Buy_orders.length;i++)
+        {
+            if(Buy_orders[i].order_id == orderid)
+            {
+                require(Buy_orders[i].ExecutorAddress == msg.sender, "You are not the owner of this Buy order");
+                require(Buy_orders[i].State == 1, "The Order is already cancelled or fulfilled");
+                Buy_orders[i].ExecutorAddress.transfer(Buy_orders[i].Price*Buy_orders[i].qty_left);
+                Buy_orders[i].State = 0;
+                found = 1;
+                break;
+
+            }
+        }
+        require(found == 1,"This Order ID you have provided does not exist, please recheck");
+    }
+
+    function cancel_sellorder(uint orderid) public 
+    {
+        uint found = 0;
+        for(uint i=0;i<Sell_orders.length;i++)
+        {
+            if(Sell_orders[i].order_id == orderid)
+            {
+                require(Sell_orders[i].ExecutorAddress == msg.sender, "You are not the owner of this Sell order");
+                require(Sell_orders[i].State == 1, "The Order is already cancelled or fulfilled");
+                Sell_orders[i].State = 0;
+                found = 1;
+                break;
+
+            }
+        }
+        require(found == 1,"This Order ID you have provided does not exist, please recheck");
+    }
+
+
+
+
 
 //     // A function to post a sell order for underlying security, function will take all the 
 //     // necesarry inputs to post a sell order as parameter and will return the status of order.
