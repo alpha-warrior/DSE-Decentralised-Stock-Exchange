@@ -37,8 +37,8 @@ contract Nifty {
     constructor(string memory symbol_sent, uint quantity_sent,uint price_sent) public
     {
         Symbol = symbol_sent;
-        OwnedStocks[address(this)] = quantity_sent;
-        Sell_orders.push(NewOrder(number_of_orders,1,address(this),price_sent,quantity_sent));
+        OwnedStocks[msg.sender] = quantity_sent;
+        Sell_orders.push(NewOrder(number_of_orders,1,msg.sender,price_sent,quantity_sent));
         number_of_orders++;
     }
 
@@ -146,7 +146,7 @@ contract Nifty {
                 if(Sell_orders[i].qty_left <= sent_qty)
                 {
                     uint temp_qty = Sell_orders[i].qty_left;
-                    OwnedStocks[Sell_orders[i].ExecutorAddress] -= temp_qty;
+                    OwnedStocks[address(this)] -= temp_qty;
                     OwnedStocks[msg.sender] += temp_qty;
                     Sell_orders[i].ExecutorAddress.transfer(sent_price*temp_qty);
                     Sell_orders[i].qty_left -= temp_qty;
@@ -159,7 +159,7 @@ contract Nifty {
                 else
                 {
                     uint temp_qty = sent_qty;
-                    OwnedStocks[Sell_orders[i].ExecutorAddress] -= temp_qty;
+                    OwnedStocks[address(this)] -= temp_qty;
                     OwnedStocks[msg.sender] += temp_qty;
                     Sell_orders[i].ExecutorAddress.transfer(sent_price*temp_qty);
                     Sell_orders[i].qty_left -= temp_qty;
@@ -199,7 +199,7 @@ contract Nifty {
                     uint temp_qty = Buy_orders[i].qty_left;
                     OwnedStocks[Buy_orders[i].ExecutorAddress] += temp_qty;
                     OwnedStocks[msg.sender] -= temp_qty;
-                    msg.sender.transfer(Buy_orders[i].Price*temp_qty);
+                    address(uint160(msg.sender)).transfer(Buy_orders[i].Price*temp_qty);
                     Buy_orders[i].qty_left -= temp_qty;
                     if(Buy_orders[i].qty_left == 0)
                     {
@@ -212,7 +212,7 @@ contract Nifty {
                     uint temp_qty = sell_qty;
                     OwnedStocks[Buy_orders[i].ExecutorAddress] += temp_qty;
                     OwnedStocks[msg.sender] -= temp_qty;
-                    msg.sender.transfer(Buy_orders[i].Price*temp_qty);
+                    address(uint160(msg.sender)).transfer(Buy_orders[i].Price*temp_qty);
                     Buy_orders[i].qty_left -= temp_qty;
                     if(Buy_orders[i].qty_left == 0)
                     {
@@ -226,6 +226,8 @@ contract Nifty {
         if(sell_qty !=0)
         {
             Sell_orders.push(NewOrder(number_of_orders,1,msg.sender,sell_price,sell_qty));
+            OwnedStocks[msg.sender] -= sell_qty;
+            OwnedStocks[address(this)] += sell_qty;
             number_of_orders++;
         }
         sort_Buy_orders();
@@ -322,6 +324,7 @@ contract Nifty {
             }
         }
         require(found == 1,"This Order ID you have provided does not exist, please recheck");
+        sort_Buy_orders();
     }
 
     function cancel_sellorder(uint orderid) public 
@@ -334,53 +337,37 @@ contract Nifty {
                 require(Sell_orders[i].ExecutorAddress == msg.sender, "You are not the owner of this Sell order");
                 require(Sell_orders[i].State == 1, "The Order is already cancelled or fulfilled");
                 Sell_orders[i].State = 0;
+                OwnedStocks[msg.sender] += Sell_orders[i].qty_left;
                 found = 1;
                 break;
 
             }
         }
         require(found == 1,"This Order ID you have provided does not exist, please recheck");
+        sort_Sell_orders();
     }
 
-
-
-
-
-//     // A function to post a sell order for underlying security, function will take all the 
-//     // necesarry inputs to post a sell order as parameter and will return the status of order.
-//     function sell() payable public returns(){
-//         // check if the adress posting order owns the quantity of security to be sold
-//         // place the order to array of sell orders
-//         // check if any transaction is possible
-//         // process all the possible transactions
-//         // return if order was executed or not
-//     }    
-
-//     // A function to cancel an order for underlying security, function will take all the 
-//     // necesarry inputs to cancel an order as parameter.
-//     function cancelOrder() public{
-//         // check if person cancelling order is also the one who posted it
-//         // check if order is not executed yet
-//         // if order not executed cancel order
-//     }
-
-//     // A function to get state of order, functiont will take all the necessary inputs to 
-//     // verify state of order like order id and will return state of order
-//     function getOrderStatus() view public returns(string memory)
-//     {
-//         // check if person asking order status is also the one who posted it
-//         // return string representing if order is executed, cancelled, open.
-//     }
-
-//     // A function to get last trading price of underlying security
-//     function getMarketPrice() view public returns(uint)
-//     {
-//         // return last tranaction price of order
-//     }
-
-//     // A function to get the market depth of the underlying security
-//     function getMarketDepth() view public returns(string)
-//     {
-//         // return market depth of underlying security
-//     }
+    function uint2str(uint256 _i) internal pure returns (string memory str)
+    {
+        if (_i == 0)
+        {
+            return "0";
+        }
+        uint256 j = _i;
+        uint256 length;
+        while (j != 0)
+        {
+            length++;
+            j /= 10;
+        }
+        bytes memory bstr = new bytes(length);
+        uint256 k = length;
+        j = _i;
+        while (j != 0)
+        {
+            bstr[--k] = bytes1(uint8(48 + j % 10));
+            j /= 10;
+        }
+        str = string(bstr);
+    }
 }
