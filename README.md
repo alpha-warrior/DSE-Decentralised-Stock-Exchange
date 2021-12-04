@@ -18,6 +18,8 @@ The functions currently supported are:
 8) Get Market Price
 9) Get Market Depth
 
+### For more details refer to the Project Paper in the repository.
+
 ---
 
 Steps to run the smart contract:

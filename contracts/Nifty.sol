@@ -39,7 +39,7 @@ contract Nifty {
     {
         Symbol = symbol_sent;
         OwnedStocks[address(this)] = quantity_sent;
-        Sell_orders.push(NewOrder(number_of_orders,1,address(this),price_sent,quantity_sent));
+        Sell_orders.push(NewOrder(number_of_orders,1,address(uint160(address(this))),price_sent,quantity_sent));
         number_of_orders++;
     }
 
@@ -300,15 +300,39 @@ contract Nifty {
     function getMarketDepth() public view returns(string memory)
     {
         string memory ret = "";
-        uint depth = 0;
-        for(uint i=0;i<Sell_orders.length;i++)
+        uint length = 0;
+        ret = string(abi.encodePacked(ret, "\n**********SELL ORDERS*********\n"));
+        if(Sell_orders.length <=5)
+        {
+            length = Sell_orders.length;         
+        }
+        else
+        {
+            length = 5;
+        }
+        for(uint i=0;i<length;i++)
         {
             if(Sell_orders[i].State == 1)
             {
-                depth += Sell_orders[i].qty_left;
+                ret = string(abi.encodePacked(ret, "\nx) Price: ", uint2str(Sell_orders[i].Price), "-> Shares: ", uint2str(Sell_orders[i].qty_left)));
             }
         }
-        ret = string(abi.encodePacked(ret,"\n*****************","\n","Market Depth (Available shares in Sell Orders): ",uint2str(depth),"\n"));
+        ret = string(abi.encodePacked(ret, "\n\n**********BUY ORDERS*********\n"));
+        if(Buy_orders.length <=5)
+        {
+            length = Buy_orders.length;         
+        }
+        else
+        {
+            length = 5;
+        }
+        for(uint i=0;i<length;i++)
+        {
+            if(Buy_orders[i].State == 1)
+            {
+                ret = string(abi.encodePacked(ret, "\nx) Price: ", uint2str(Buy_orders[i].Price), "-> Shares: ", uint2str(Buy_orders[i].qty_left)));
+            }
+        }
     }
 
     function cancel_buyorder(uint orderid) public payable
