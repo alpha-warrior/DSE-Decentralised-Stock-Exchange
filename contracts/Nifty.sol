@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.5.16;
 
+// import "truffle/Console.sol";
+
 contract Nifty {
     struct NewOrder{
         uint order_id; // represents the order ID
@@ -41,6 +43,7 @@ contract Nifty {
         OwnedStocks[address(this)] = quantity_sent;
         Sell_orders.push(NewOrder(number_of_orders,1,address(uint160(address(this))),price_sent,quantity_sent));
         number_of_orders++;
+        marketprice = price_sent;
     }
 
 
@@ -135,6 +138,7 @@ contract Nifty {
     // necesarry inputs to post a buy order as parameter and will return the status of order.
     function buy(uint sent_price, uint sent_qty) payable public
     {
+        // string memory ret = "TEST";
         require(msg.value == sent_price*sent_qty,"WRONG, amount of money paid"); // check if the value of money sent matches with quantity*price
         for(uint i=0;i<Sell_orders.length;i++)
         {
@@ -150,7 +154,12 @@ contract Nifty {
                     uint temp_qty = Sell_orders[i].qty_left;
                     OwnedStocks[address(this)] -= temp_qty;
                     OwnedStocks[msg.sender] += temp_qty;
+                    
+                    if(Sell_orders[i].ExecutorAddress != address(uint160(address(this))) )
+                    {
                     Sell_orders[i].ExecutorAddress.transfer(sent_price*temp_qty);
+                    }
+
                     Sell_orders[i].qty_left -= temp_qty;
                     if(Sell_orders[i].qty_left == 0)
                     {
@@ -164,7 +173,10 @@ contract Nifty {
                     uint temp_qty = sent_qty;
                     OwnedStocks[address(this)] -= temp_qty;
                     OwnedStocks[msg.sender] += temp_qty;
-                    Sell_orders[i].ExecutorAddress.transfer(sent_price*temp_qty);
+                    if(Sell_orders[i].ExecutorAddress != address(uint160(address(this))) )
+                    {
+                        Sell_orders[i].ExecutorAddress.transfer(sent_price*temp_qty);
+                    }
                     Sell_orders[i].qty_left -= temp_qty;
                     if(Sell_orders[i].qty_left == 0)
                     {
@@ -175,7 +187,7 @@ contract Nifty {
             }
         }
 
-        if(sent_qty !=0)
+        if(sent_qty > 0)
         {
             Buy_orders.push(NewOrder(number_of_orders,1,msg.sender,sent_price,sent_qty));
             number_of_orders++;
@@ -270,7 +282,7 @@ contract Nifty {
             {
             if(Sell_orders[i].order_id == orderid)
             {
-                require(Sell_orders[i].ExecutorAddress == msg.sender, "You are not the owner of this Sell order");
+                require(Sell_orders[i].ExecutorAddress == address(uint160(msg.sender)), "You are not the owner of this Sell order");
                 
                 ret = string(abi.encodePacked(ret,"\n*****************","\n","Order ID: ",uint2str(Sell_orders[i].order_id),"\n",
                 "Price: ",uint2str(Sell_orders[i].Price),"\n",
@@ -286,15 +298,16 @@ contract Nifty {
 
         if(found == 0)
         {
-            ret = string("This Order ID you have provided does not exist, please recheck");
+            ret = string("This Order ID you have provided does not exist, or the order is cancelled or fully executed");
         }
-
+        return ret;
     }
 
     function getMarketPrice() public view returns(string memory)
     {
         string memory ret = "";
         ret = string(abi.encodePacked(ret,"\n*****************","\n","Market Price: ",uint2str(marketprice),"\n"));
+        return ret;
     }
 
     function getMarketDepth() public view returns(string memory)
@@ -333,6 +346,7 @@ contract Nifty {
                 ret = string(abi.encodePacked(ret, "\nx) Price: ", uint2str(Buy_orders[i].Price), "-> Shares: ", uint2str(Buy_orders[i].qty_left)));
             }
         }
+        return ret;
     }
 
     function cancel_buyorder(uint orderid) public payable
@@ -342,7 +356,7 @@ contract Nifty {
         {
             if(Buy_orders[i].order_id == orderid)
             {
-                require(Buy_orders[i].ExecutorAddress == msg.sender, "You are not the owner of this Buy order");
+                require(Buy_orders[i].ExecutorAddress == address(uint160(msg.sender)), "You are not the owner of this Buy order");
                 require(Buy_orders[i].State == 1, "The Order is already cancelled or fulfilled");
                 Buy_orders[i].ExecutorAddress.transfer(Buy_orders[i].Price*Buy_orders[i].qty_left);
                 Buy_orders[i].State = 0;
@@ -366,6 +380,7 @@ contract Nifty {
                 require(Sell_orders[i].State == 1, "The Order is already cancelled or fulfilled");
                 Sell_orders[i].State = 0;
                 OwnedStocks[msg.sender] += Sell_orders[i].qty_left;
+                OwnedStocks[address(this)] -= Sell_orders[i].qty_left;
                 found = 1;
                 break;
 
