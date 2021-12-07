@@ -146,6 +146,9 @@ contract Nifty {
             {
                 break;
             }
+            if(Sell_orders[i].State != 1){
+                continue;
+            }
             else
             {
                 if(Sell_orders[i].qty_left <= sent_qty)
@@ -207,6 +210,9 @@ contract Nifty {
             {
                 break;
             }
+            if(Buy_orders[i].State != 1){
+                continue;
+            }
             else
             {
                 if(Buy_orders[i].qty_left <= sell_qty)
@@ -236,6 +242,9 @@ contract Nifty {
                         Buy_orders[i].State = 2;
                     }
                     sell_qty -= temp_qty;
+                }
+                if(sell_qty == 0){
+                    break;
                 }
             }
         }
@@ -315,40 +324,56 @@ contract Nifty {
         string memory ret = "";
         uint length = 0;
         ret = string(abi.encodePacked(ret, "\n**********SELL ORDERS*********\n"));
-        if(Sell_orders.length <=5)
-        {
-            length = Sell_orders.length;         
-        }
-        else
-        {
-            length = 5;
-        }
-        for(uint i=0;i<length;i++)
-        {
+        uint i=0;
+        uint itr = 0;
+        while(i < Sell_orders.length && itr < 5){
             if(Sell_orders[i].State == 1)
             {
                 ret = string(abi.encodePacked(ret, "\nx) Price: ", uint2str(Sell_orders[i].Price), "-> Shares: ", uint2str(Sell_orders[i].qty_left)));
+                itr++;
             }
+            i++;
         }
+        i = 0;
+        itr = 0;
         ret = string(abi.encodePacked(ret, "\n\n**********BUY ORDERS*********\n"));
-        if(Buy_orders.length <=5)
-        {
-            length = Buy_orders.length;         
-        }
-        else
-        {
-            length = 5;
-        }
-        for(uint i=0;i<length;i++)
-        {
+        while(i < Buy_orders.length && itr < 5){
             if(Buy_orders[i].State == 1)
             {
                 ret = string(abi.encodePacked(ret, "\nx) Price: ", uint2str(Buy_orders[i].Price), "-> Shares: ", uint2str(Buy_orders[i].qty_left)));
+                itr++;
+            }
+            i++;
+        }
+        return ret;
+    }
+    function getActiveOrders() public view returns(string memory){
+        string memory ret = "";
+        uint length = 0;
+        ret = string(abi.encodePacked(ret, "\n**********SELL ORDERS*********\n"));
+        for(uint i=0;i<Sell_orders.length;i++)
+        {
+            if(Sell_orders[i].State == 1 && Sell_orders[i].ExecutorAddress == address(uint160(msg.sender)))
+            {
+                ret = string(abi.encodePacked(ret,"\n*****************","\n","Order ID: ",uint2str(Sell_orders[i].order_id),"\n",
+                "Price: ",uint2str(Sell_orders[i].Price),"\n",
+                "Quantity left: ", uint2str(Sell_orders[i].qty_left),"\n",
+                "State: ",uint2str(Sell_orders[i].State),"\n"));
+            }
+        }
+        ret = string(abi.encodePacked(ret, "\n\n**********BUY ORDERS*********\n"));
+        for(uint i=0;i<Buy_orders.length;i++)
+        {
+            if(Buy_orders[i].State == 1 && Buy_orders[i].ExecutorAddress == address(uint160(msg.sender)))
+            {
+                ret = string(abi.encodePacked(ret,"\n*****************","\n","Order ID: ",uint2str(Buy_orders[i].order_id),"\n",
+                "Price: ",uint2str(Buy_orders[i].Price),"\n",
+                "Quantity left: ", uint2str(Buy_orders[i].qty_left),"\n",
+                "State: ",uint2str(Buy_orders[i].State),"\n"));
             }
         }
         return ret;
     }
-
     function cancel_buyorder(uint orderid) public payable
     {
         uint found = 0;

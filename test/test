@@ -1,0 +1,24 @@
+const tata = await Nifty.new("TA", 20, 100);
+const ac0 = accounts[0]
+const ac1 = accounts[1]
+const ac2 = accounts[2]
+await tata.buy(150, 5, {from: ac0, value:750})
+let ret = await tata.getMarketPrice()
+ret = await tata.getMarketDepth()
+console.log(ret)
+await tata.buy(120, 12, {from: ac1, value:1440})
+await tata.buy(120, 5, {from: ac2, value:600})
+await tata.sell(130, 5, {from: ac1})
+await tata.getActiveOrders({from: ac1})
+await tata.buy(80, 6, {from: ac1, value:480})
+await tata.getActiveOrders({from: ac1})
+await tata.cancel_buyorder(3, {from: ac1})
+await tata.getActiveOrders({from: ac1})
+await tata.cancel_sellorder(2, {from: ac1})
+await tata.getActiveOrders({from: ac1})
+await tata.buy(130, 2, {from: ac2, value:260})
+await tata.sell(80, 3, {from: ac1})
+await tata.buy(140, 6, {from: ac2, value:840})
+await tata.getActiveOrders({from: ac1})
+await tata.cancel_sellorder(2, {from: ac1})
+await tata.buy(80, 6, {from: ac1, value:480})
