@@ -414,6 +414,12 @@ contract Nifty {
         require(found == 1,"This Order ID you have provided does not exist, please recheck");
         sort_Sell_orders();
     }
+    function getShares() view public returns(string memory) 
+    {
+        string memory ret = "";
+        ret = string(abi.encodePacked(ret,"\n*****************","\n","Your shares: ",uint2str(OwnedStocks[msg.sender]),"\n"));
+        return ret;
+    }
 
     function uint2str(uint256 _i) internal pure returns (string memory str)
     {
